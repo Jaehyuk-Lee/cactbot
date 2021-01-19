@@ -121,8 +121,8 @@ class Radar {
   }
 
   AddMonster(log, monster, matches) {
-    if (monster.id && matches.npcNameId !== monster.id)
-      return;
+    // if (monster.id && matches.npcNameId !== monster.id)
+    //   return;
     if (monster.regex && !monster.regex.test(log))
       return;
     if (monster.hp && parseFloat(matches.hp) < monster.hp)
