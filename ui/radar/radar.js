@@ -142,8 +142,8 @@ class Radar {
     if (options.Type === 'mob') {
       if (!matches.id.startsWith('4'))
         return;
-      if (!matches.npcNameId || matches.npcNameId === '0')
-        return;
+      // if (!matches.npcNameId || matches.npcNameId === '0')
+      //   return;
     }
 
     const mobKey = matches.name.toLowerCase();
