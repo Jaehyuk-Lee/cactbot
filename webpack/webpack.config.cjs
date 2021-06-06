@@ -157,7 +157,7 @@ module.exports = function(env, argv) {
       path: path.resolve(__dirname, '../dist'),
     },
     devServer: {
-      contentBase: path.join(__dirname, '../dist'),
+      contentBase: path.join('C:\\Advanced Combat Tracker\\Plugins\\cactbot\\dist'),
       writeToDisk: true,
     },
     resolve: {
