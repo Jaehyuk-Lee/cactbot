@@ -25,6 +25,9 @@ const getTetherString = (tethers, output) => {
     return;
 
   const sorted = tethers.sort();
+  let test = 1;
+  test++;
+  console.log(test);
 
   const comboStr = sorted[0] + sorted[1];
   if (comboStr in primalOutputStrings)
