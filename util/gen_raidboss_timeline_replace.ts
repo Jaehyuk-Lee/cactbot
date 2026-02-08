@@ -330,6 +330,13 @@ const extractNameParts = (
   return { prefix: prefix, baseName: nameWithoutPrefix, suffix: '' };
 };
 
+// If existing value matches case-insensitively, keep existing to minimize diffs
+const preferExistingCase = (newValue: string, existingValue?: string): string => {
+  if (existingValue !== undefined && existingValue.toLowerCase() === newValue.toLowerCase())
+    return existingValue;
+  return newValue;
+};
+
 // Helper to find key in map case-insensitively
 const findCaseInsensitiveKey = (map: Map<string, string>, key: string): string | undefined => {
   if (map.has(key))
@@ -505,7 +512,12 @@ const processFile = (
   // Generate translations for each locale
   const localeBlocks: string[] = [];
 
-  for (const locale of allLocales) {
+  // Preserve existing locale order, then append new locales
+  const existingLocaleOrder = Array.from(existingTranslations.keys());
+  const newLocales = allLocales.filter((l) => !existingTranslations.has(l));
+  const orderedLocales = [...existingLocaleOrder, ...newLocales];
+
+  for (const locale of orderedLocales) {
     const localeActionMap = allLocaleActionMaps.get(locale);
     const localeBnpcMap = allLocaleBnpcMaps.get(locale);
     if (!localeActionMap || !localeBnpcMap)
@@ -538,7 +550,7 @@ const processFile = (
             : undefined;
           const keyToUse = existingKey ?? enKey;
 
-          replaceText[keyToUse] = locName;
+          replaceText[keyToUse] = preferExistingCase(locName, existingTextMap?.get(keyToUse));
         }
       }
     }
@@ -580,7 +592,7 @@ const processFile = (
         const uniqueCandidates = Array.from(seen.values()).sort();
 
         if (uniqueCandidates.length === 1) {
-          replaceSync[keyToUse] = uniqueCandidates[0] ?? '';
+          replaceSync[keyToUse] = preferExistingCase(uniqueCandidates[0] ?? '', existingValue);
         } else if (existingValue !== undefined) {
           // Multiple candidates but existing translation exists - keep existing
           log.alert(
