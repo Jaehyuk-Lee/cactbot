@@ -330,6 +330,18 @@ const extractNameParts = (
   return { prefix: prefix, baseName: nameWithoutPrefix, suffix: '' };
 };
 
+// Helper to find key in map case-insensitively
+const findCaseInsensitiveKey = (map: Map<string, string>, key: string): string | undefined => {
+  if (map.has(key))
+    return key;
+  const lowerKey = key.toLowerCase();
+  for (const k of map.keys()) {
+    if (k.toLowerCase() === lowerKey)
+      return k;
+  }
+  return undefined;
+};
+
 const processFile = (
   triggersFile: string,
   localeData: LocaleData,
@@ -520,7 +532,13 @@ const processFile = (
       if (bestId !== -1) {
         const locName = localeActionMap.get(bestId);
         if (locName !== undefined && enKey.trim() !== '') {
-          replaceText[enKey] = locName;
+          // Check if we have an existing key that matches this source case-insensitively
+          const existingKey = existingTextMap
+            ? findCaseInsensitiveKey(existingTextMap, enKey)
+            : undefined;
+          const keyToUse = existingKey ?? enKey;
+
+          replaceText[keyToUse] = locName;
         }
       }
     }
@@ -533,7 +551,14 @@ const processFile = (
       if (ids === undefined)
         continue;
 
-      const existingValue = existingSyncMap?.get(source);
+      // Check if we have an existing key that matches this source case-insensitively
+      // If so, use the existing key to minimize diffs
+      const existingKey = existingSyncMap
+        ? findCaseInsensitiveKey(existingSyncMap, source)
+        : undefined;
+      const keyToUse = existingKey ?? source;
+
+      const existingValue = existingSyncMap?.get(keyToUse);
 
       const candidates = new Set<string>();
       for (const id of ids) {
@@ -555,7 +580,7 @@ const processFile = (
         const uniqueCandidates = Array.from(seen.values()).sort();
 
         if (uniqueCandidates.length === 1) {
-          replaceSync[source] = uniqueCandidates[0] ?? '';
+          replaceSync[keyToUse] = uniqueCandidates[0] ?? '';
         } else if (existingValue !== undefined) {
           // Multiple candidates but existing translation exists - keep existing
           log.alert(
@@ -564,7 +589,7 @@ const processFile = (
             }`,
           );
           log.alert(`         Using existing translation: '${existingValue}'`);
-          replaceSync[source] = existingValue;
+          replaceSync[keyToUse] = existingValue;
         } else {
           // Multiple candidates and no existing - output alternation for manual review
           log.alert(
@@ -573,11 +598,11 @@ const processFile = (
             }`,
           );
           log.alert(`         No existing translation found. Manual review required.`);
-          replaceSync[source] = `(?:${uniqueCandidates.join('|')})`;
+          replaceSync[keyToUse] = `(?:${uniqueCandidates.join('|')})`;
         }
       } else if (existingValue !== undefined) {
         // No candidates found but existing translation exists - keep it
-        replaceSync[source] = existingValue;
+        replaceSync[keyToUse] = existingValue;
       }
     }
 
@@ -618,22 +643,38 @@ const processFile = (
 
     if (Object.keys(replaceText).length > 0) {
       lines.push(`      'replaceText': {`);
-      // Output existing keys first in original order, then new keys
+
+      const processedKeys = new Set<string>();
+
+      // 1. Output existing keys first in original order
       const existingTextKeyOrder = existingLocaleTranslations?.textKeyOrder ?? [];
+
+      for (const key of existingTextKeyOrder) {
+        const loc = replaceText[key];
+        if (loc === undefined)
+          continue;
+
+        const escapedKey = key.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+        const escapedLoc = loc.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+        lines.push(`        '${escapedKey}': '${escapedLoc}',`);
+        processedKeys.add(key);
+      }
+
+      // 2. Output new keys
       const existingTextKeys = new Set(existingTextKeyOrder);
       const newTextKeys = Object.keys(replaceText).filter((k) => !existingTextKeys.has(k));
-      const replaceTextKeys = Object.keys(replaceText);
+      const collisionContextKeys = Array.from(englishTextKeys);
 
-      for (const en of [...existingTextKeyOrder, ...newTextKeys]) {
+      for (const en of newTextKeys) {
         const loc = replaceText[en];
         if (loc === undefined)
           continue;
 
-        // Check for overlapping keys
+        // Check for overlapping keys using the pure English keys from timeline
         const suffixCollisions = new Set<string>();
         const prefixCollisions = new Set<string>();
 
-        for (const otherKey of replaceTextKeys) {
+        for (const otherKey of collisionContextKeys) {
           if (otherKey === en)
             continue;
 
@@ -674,6 +715,12 @@ const processFile = (
           const suf = [...suffixCollisions].map(escapeChar).join('');
           key = `${en}(?![${suf}])`;
         }
+
+        // Skip if this key has already been output (e.g. matched an existing regex key)
+        if (processedKeys.has(key))
+          continue;
+
+        processedKeys.add(key);
 
         const escapedKey = key.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
         const escapedLoc = loc.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
