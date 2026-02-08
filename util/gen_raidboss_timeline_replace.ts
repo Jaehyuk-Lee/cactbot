@@ -410,9 +410,12 @@ const processFile = (
       const name = timelineAbilityMatch[1];
       const id = parseInt(timelineAbilityMatch[2], 16);
       triggerIds.push(id);
+      // Register under base name (strip suffixes like x8, x10, etc.)
+      const { baseName } = extractNameParts(name);
+      const key = baseName !== '' ? baseName : name;
       // First occurrence wins (most specific to this encounter)
-      if (!timelineNameIdMap.has(name))
-        timelineNameIdMap.set(name, id);
+      if (!timelineNameIdMap.has(key))
+        timelineNameIdMap.set(key, id);
     }
     timelineAbilityMatch = timelineAbilityRegex.exec(timelineContent);
   }
@@ -759,11 +762,18 @@ const processFile = (
         if (loc === undefined)
           continue;
 
-        // For plain-text existing keys, check if they now need collision regex
+        // Re-check collision regex for all keys
         let outputKey = key;
         const hasRegex = /[?*+\\()\[\]{}|^$]/.test(key);
         if (!hasRegex) {
           outputKey = addCollisionRegex(key);
+        } else {
+          // Extract base text from existing regex (strip lookbehind/lookahead)
+          const baseMatch = key.match(/^(?:\(\?<![^)]+\))?(.*?)(?:\(\?!.[^)]*\))?$/);
+          const baseText = baseMatch?.[1];
+          if (baseText !== undefined && baseText !== '' && baseText !== key) {
+            outputKey = addCollisionRegex(baseText);
+          }
         }
 
         const escapedKey = outputKey.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
