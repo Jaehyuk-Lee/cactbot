@@ -337,7 +337,7 @@ const preferExistingCase = (newValue: string, existingValue?: string): string =>
   return newValue;
 };
 
-// Helper to find key in map case-insensitively
+// Helper to find key in map case-insensitively, also matching regex pattern keys
 const findCaseInsensitiveKey = (map: Map<string, string>, key: string): string | undefined => {
   if (map.has(key))
     return key;
@@ -345,6 +345,15 @@ const findCaseInsensitiveKey = (map: Map<string, string>, key: string): string |
   for (const k of map.keys()) {
     if (k.toLowerCase() === lowerKey)
       return k;
+  }
+  // Try existing keys as regex patterns (e.g. 'Phoenix(?!-)' matches 'Phoenix')
+  for (const k of map.keys()) {
+    try {
+      if (new RegExp(`^${k}$`, 'i').test(key))
+        return k;
+    } catch {
+      // Not a valid regex, skip
+    }
   }
   return undefined;
 };
@@ -390,6 +399,16 @@ const processFile = (
   };
 
   const triggerIds = getActionIdsFromContent();
+
+  // Also extract action IDs from timeline comments (e.g. # Ability { id: "1DAA", source: "..." })
+  const timelineIdRegex = /# Ability \{[^}]*id:\s*"([0-9A-Fa-f]+)"/g;
+  let timelineIdMatch = timelineIdRegex.exec(timelineContent);
+  while (timelineIdMatch !== null) {
+    if (timelineIdMatch[1] !== undefined)
+      triggerIds.push(parseInt(timelineIdMatch[1], 16));
+    timelineIdMatch = timelineIdRegex.exec(timelineContent);
+  }
+
   if (triggerIds.length === 0) {
     return false;
   }
@@ -399,9 +418,9 @@ const processFile = (
   const searchMinId = minId - padding;
   const searchMaxId = maxId + padding;
 
-  // Extract timeline names
+  // Extract timeline names (only the ability name after timestamp, not source/id etc.)
   const timelineNames = new Set<string>();
-  const nameRegex = /"([^"]+)"/g;
+  const nameRegex = /^\s*[\d.]+\s+"([^"]+)"/gm;
   let nameMatch = nameRegex.exec(timelineContent);
   while (nameMatch !== null) {
     if (nameMatch[1] !== undefined) {
@@ -482,15 +501,21 @@ const processFile = (
     sourceMatch = sourceRegex.exec(sourceRegex.source);
   }
 
-  // Extract from timeline file as well
+  // Extract from timeline file as well (reuse same pattern to handle arrays)
   const timelineSourceRegex = new RegExp(
-    `(?:${syncFieldNames.join('|')}):\\s*['"]([^'"]+)['"]`,
+    `(?:${syncFieldNames.join('|')}):\\s*(?:['"]([^'"]+)['"]|\\[((?:['"][^'"]+['"],?\\s*)+)\\])`,
     'g',
   );
   let timelineSourceMatch = timelineSourceRegex.exec(timelineContent);
   while (timelineSourceMatch !== null) {
     if (timelineSourceMatch[1] !== undefined) {
       sources.add(timelineSourceMatch[1]);
+    } else if (timelineSourceMatch[2] !== undefined) {
+      const list = timelineSourceMatch[2].replace(/['"]/g, '').split(',').map((s) => s.trim());
+      for (const s of list) {
+        if (s !== '')
+          sources.add(s);
+      }
     }
     timelineSourceMatch = timelineSourceRegex.exec(timelineContent);
   }
@@ -555,8 +580,15 @@ const processFile = (
       }
     }
 
-    // Generate replaceSync
+    // Generate replaceSync - merge with existing translations
     const replaceSync: { [key: string]: string } = {};
+
+    // Keep all existing replaceSync entries (no deletion)
+    if (existingSyncMap) {
+      for (const [key, value] of existingSyncMap) {
+        replaceSync[key] = value;
+      }
+    }
 
     for (const source of uniqueSources) {
       const ids = enBnpcMap.get(source.toLowerCase());
@@ -657,6 +689,46 @@ const processFile = (
       lines.push(`      'replaceText': {`);
 
       const processedKeys = new Set<string>();
+      const collisionContextKeys = Array.from(englishTextKeys);
+
+      // Helper to escape chars for regex character class
+      const escapeChar = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Detect collisions and add lookahead/lookbehind if needed
+      const addCollisionRegex = (en: string): string => {
+        const suffixCollisions = new Set<string>();
+        const prefixCollisions = new Set<string>();
+
+        for (const otherKey of collisionContextKeys) {
+          if (otherKey === en)
+            continue;
+
+          if (otherKey.endsWith(en)) {
+            const charBefore = otherKey[otherKey.length - en.length - 1];
+            if (charBefore !== undefined)
+              prefixCollisions.add(charBefore);
+          }
+
+          if (otherKey.startsWith(en)) {
+            const charAfter = otherKey[en.length];
+            if (charAfter !== undefined)
+              suffixCollisions.add(charAfter);
+          }
+        }
+
+        if (prefixCollisions.size > 0 && suffixCollisions.size > 0) {
+          const pre = [...prefixCollisions].map(escapeChar).join('');
+          const suf = [...suffixCollisions].map(escapeChar).join('');
+          return `(?<![${pre}])${en}(?![${suf}])`;
+        } else if (prefixCollisions.size > 0) {
+          const pre = [...prefixCollisions].map(escapeChar).join('');
+          return `(?<![${pre}])${en}`;
+        } else if (suffixCollisions.size > 0) {
+          const suf = [...suffixCollisions].map(escapeChar).join('');
+          return `${en}(?![${suf}])`;
+        }
+        return en;
+      };
 
       // 1. Output existing keys first in original order
       const existingTextKeyOrder = existingLocaleTranslations?.textKeyOrder ?? [];
@@ -666,67 +738,29 @@ const processFile = (
         if (loc === undefined)
           continue;
 
-        const escapedKey = key.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+        // For plain-text existing keys, check if they now need collision regex
+        let outputKey = key;
+        const hasRegex = /[?*+\\()\[\]{}|^$]/.test(key);
+        if (!hasRegex) {
+          outputKey = addCollisionRegex(key);
+        }
+
+        const escapedKey = outputKey.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
         const escapedLoc = loc.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
         lines.push(`        '${escapedKey}': '${escapedLoc}',`);
-        processedKeys.add(key);
+        processedKeys.add(outputKey);
       }
 
       // 2. Output new keys
       const existingTextKeys = new Set(existingTextKeyOrder);
       const newTextKeys = Object.keys(replaceText).filter((k) => !existingTextKeys.has(k));
-      const collisionContextKeys = Array.from(englishTextKeys);
 
       for (const en of newTextKeys) {
         const loc = replaceText[en];
         if (loc === undefined)
           continue;
 
-        // Check for overlapping keys using the pure English keys from timeline
-        const suffixCollisions = new Set<string>();
-        const prefixCollisions = new Set<string>();
-
-        for (const otherKey of collisionContextKeys) {
-          if (otherKey === en)
-            continue;
-
-          if (otherKey.endsWith(en)) {
-            // en is a suffix of otherKey, e.g. "Ice" in "Fire Ice"
-            // The character before "Ice" is the collision
-            const charBefore = otherKey[otherKey.length - en.length - 1];
-            if (charBefore !== undefined)
-              prefixCollisions.add(charBefore);
-          }
-
-          if (otherKey.startsWith(en)) {
-            // en is a prefix of otherKey, e.g. "Ice" in "Ice Fire"
-            // The character after "Ice" is the collision
-            const charAfter = otherKey[en.length];
-            if (charAfter !== undefined)
-              suffixCollisions.add(charAfter);
-          }
-
-          // Also handle middle matches if needed, but usually Cactbot keys are phrases
-          // For now, let's stick to prefix/suffix overlaps as they are most common errors
-          // Middle matches might be too aggressive (e.g. "is" in "Mist")
-        }
-
-        let key = en;
-
-        // Helper to escape chars for regex character class
-        const escapeChar = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-        if (prefixCollisions.size > 0 && suffixCollisions.size > 0) {
-          const pre = [...prefixCollisions].map(escapeChar).join('');
-          const suf = [...suffixCollisions].map(escapeChar).join('');
-          key = `(?<![${pre}])${en}(?![${suf}])`;
-        } else if (prefixCollisions.size > 0) {
-          const pre = [...prefixCollisions].map(escapeChar).join('');
-          key = `(?<![${pre}])${en}`;
-        } else if (suffixCollisions.size > 0) {
-          const suf = [...suffixCollisions].map(escapeChar).join('');
-          key = `${en}(?![${suf}])`;
-        }
+        const key = addCollisionRegex(en);
 
         // Skip if this key has already been output (e.g. matched an existing regex key)
         if (processedKeys.has(key))
