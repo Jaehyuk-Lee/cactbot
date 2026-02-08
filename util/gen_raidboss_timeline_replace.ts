@@ -400,13 +400,29 @@ const processFile = (
 
   const triggerIds = getActionIdsFromContent();
 
-  // Also extract action IDs from timeline comments (e.g. # Ability { id: "1DAA", source: "..." })
-  const timelineIdRegex = /# Ability \{[^}]*id:\s*"([0-9A-Fa-f]+)"/g;
-  let timelineIdMatch = timelineIdRegex.exec(timelineContent);
+  // Extract action IDs from timeline comments (e.g. # Ability { id: "1DAA", source: "..." })
+  // Also build a direct name→ID mapping for precise translation lookup
+  const timelineNameIdMap = new Map<string, number>();
+  const timelineAbilityRegex = /^\s*[\d.]+\s+"([^"]+)".*# Ability \{[^}]*id:\s*"([0-9A-Fa-f]+)"/gm;
+  let timelineAbilityMatch = timelineAbilityRegex.exec(timelineContent);
+  while (timelineAbilityMatch !== null) {
+    if (timelineAbilityMatch[1] !== undefined && timelineAbilityMatch[2] !== undefined) {
+      const name = timelineAbilityMatch[1];
+      const id = parseInt(timelineAbilityMatch[2], 16);
+      triggerIds.push(id);
+      // First occurrence wins (most specific to this encounter)
+      if (!timelineNameIdMap.has(name))
+        timelineNameIdMap.set(name, id);
+    }
+    timelineAbilityMatch = timelineAbilityRegex.exec(timelineContent);
+  }
+  // Also extract IDs without name association (for range calculation only)
+  const timelineIdOnlyRegex = /# Ability \{[^}]*id:\s*"([0-9A-Fa-f]+)"/g;
+  let timelineIdMatch = timelineIdOnlyRegex.exec(timelineContent);
   while (timelineIdMatch !== null) {
     if (timelineIdMatch[1] !== undefined)
       triggerIds.push(parseInt(timelineIdMatch[1], 16));
-    timelineIdMatch = timelineIdRegex.exec(timelineContent);
+    timelineIdMatch = timelineIdOnlyRegex.exec(timelineContent);
   }
 
   if (triggerIds.length === 0) {
@@ -431,6 +447,11 @@ const processFile = (
 
   // Find the best matching action ID for a given name
   const findBestActionId = (name: string): number => {
+    // Prefer direct ID from timeline comments (e.g. "Diffractive Laser" # Ability { id: "1DAA" })
+    const directId = timelineNameIdMap.get(name);
+    if (directId !== undefined)
+      return directId;
+
     const candidateIds = enActionMap.get(name.toLowerCase());
     if (candidateIds === undefined)
       return -1;
