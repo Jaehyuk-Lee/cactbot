@@ -13,9 +13,6 @@ const rootDir = 'ui/raidboss/data';
 const _SCRIPT_NAME = path.basename(import.meta.url);
 const log = new ConsoleLogger();
 
-// Test mode: limit to 20 files
-const TEST_MODE_LIMIT = 20;
-
 const getTargetFiles = (target?: string): string[] => {
   const files: string[] = [];
   const filter = target?.replace(/\.(?:[jt]s|txt)$/, '').split(path.sep).join(path.posix.sep);
@@ -918,13 +915,7 @@ const genRaidbossTimelineReplace = async (
 
   try {
     // Determine which files to process
-    let filesToProcess = getTargetFiles(target);
-
-    // TEST MODE: Limit to first 20 files
-    if (target === undefined && filesToProcess.length > TEST_MODE_LIMIT) {
-      log.info(`TEST MODE: Limiting to ${TEST_MODE_LIMIT} files out of ${filesToProcess.length}`);
-      filesToProcess = filesToProcess.slice(0, TEST_MODE_LIMIT);
-    }
+    const filesToProcess = getTargetFiles(target);
 
     if (filesToProcess.length > 1)
       log.info(`Processing ${filesToProcess.length} raidboss files...`);
