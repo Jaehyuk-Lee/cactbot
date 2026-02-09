@@ -567,6 +567,46 @@ const processFile = (
   const orderedLocales = [...existingLocaleOrder, ...newLocales];
 
   for (const locale of orderedLocales) {
+    // Preserve 'en' locale blocks exactly as-is
+    if ((locale as string) === 'en') {
+      const existingEnTranslations = existingTranslations.get(locale);
+      if (existingEnTranslations) {
+        const lines: string[] = [];
+        lines.push('    {');
+        lines.push(`      'locale': 'en',`);
+        if (existingEnTranslations.hasMissingTranslations) {
+          lines.push(`      'missingTranslations': true,`);
+        }
+        if (existingEnTranslations.replaceSync.size > 0) {
+          lines.push(`      'replaceSync': {`);
+          for (const key of existingEnTranslations.syncKeyOrder) {
+            const val = existingEnTranslations.replaceSync.get(key);
+            if (val === undefined)
+              continue;
+            const escapedKey = key.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+            const escapedVal = val.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+            lines.push(`        '${escapedKey}': '${escapedVal}',`);
+          }
+          lines.push(`      },`);
+        }
+        if (existingEnTranslations.replaceText.size > 0) {
+          lines.push(`      'replaceText': {`);
+          for (const key of existingEnTranslations.textKeyOrder) {
+            const val = existingEnTranslations.replaceText.get(key);
+            if (val === undefined)
+              continue;
+            const escapedKey = key.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+            const escapedVal = val.replace(/'/g, `\\'`).replace(/\$/g, '$$$$');
+            lines.push(`        '${escapedKey}': '${escapedVal}',`);
+          }
+          lines.push(`      },`);
+        }
+        lines.push('    },');
+        localeBlocks.push(lines.join('\r\n'));
+      }
+      continue;
+    }
+
     const localeActionMap = allLocaleActionMaps.get(locale);
     const localeBnpcMap = allLocaleBnpcMaps.get(locale);
     if (!localeActionMap || !localeBnpcMap)
@@ -713,49 +753,81 @@ const processFile = (
       lines.push(`      'replaceText': {`);
 
       const processedKeys = new Set<string>();
-      const collisionContextKeys = Array.from(englishTextKeys);
+
+      // Collect ALL keys that will be in the output for collision detection
+      // This includes both existing keys and newly generated keys
+      const existingTextKeyOrder = existingLocaleTranslations?.textKeyOrder ?? [];
+      const allOutputKeys = new Set<string>([...existingTextKeyOrder, ...Object.keys(replaceText)]);
+
+      // Extract base text from regex keys for collision checking
+      const extractBaseText = (key: string): string => {
+        let baseText = key;
+        // Strip leading lookbehind (?<!...) or (?<=...)
+        baseText = baseText.replace(/^\(\?<[!=][^()]*(?:\([^()]*\)[^()]*)*\)/, '');
+        // Strip trailing lookahead (?!...) or (?=...)
+        baseText = baseText.replace(/\(\?[!=][^()]*(?:\([^()]*\)[^()]*)*\)$/, '');
+        return baseText !== '' ? baseText : key;
+      };
+
+      // Build collision context: base text of all keys + all translation values
+      const collisionContextKeys: string[] = [];
+      for (const key of allOutputKeys) {
+        const baseText = extractBaseText(key);
+        collisionContextKeys.push(baseText);
+      }
+      // Also add translation values to check if keys would match inside values
+      for (const value of Object.values(replaceText)) {
+        if (value !== undefined)
+          collisionContextKeys.push(value);
+      }
 
       // Helper to escape chars for regex character class
       const escapeChar = (c: string) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
       // Detect collisions and add lookahead/lookbehind if needed
+      // Note: regex matching is case-insensitive, so collision detection must be too
       const addCollisionRegex = (en: string): string => {
         const suffixCollisions = new Set<string>();
         const prefixCollisions = new Set<string>();
+        const enLower = en.toLowerCase();
 
         for (const otherKey of collisionContextKeys) {
           if (otherKey === en)
             continue;
+          const otherLower = otherKey.toLowerCase();
 
-          if (otherKey.endsWith(en)) {
+          // Case-insensitive endsWith check
+          if (otherLower.endsWith(enLower)) {
             const charBefore = otherKey[otherKey.length - en.length - 1];
             if (charBefore !== undefined)
-              prefixCollisions.add(charBefore);
+              prefixCollisions.add(charBefore.toLowerCase());
           }
 
-          if (otherKey.startsWith(en)) {
+          // Case-insensitive startsWith check
+          if (otherLower.startsWith(enLower)) {
             const charAfter = otherKey[en.length];
             if (charAfter !== undefined)
-              suffixCollisions.add(charAfter);
+              suffixCollisions.add(charAfter.toLowerCase());
           }
         }
 
+        // Format as single char or character class depending on count
+        const charGroup = (chars: Set<string>): string => {
+          const escaped = [...chars].map(escapeChar);
+          return escaped.length === 1 ? (escaped[0] ?? '') : `[${escaped.join('')}]`;
+        };
+
         if (prefixCollisions.size > 0 && suffixCollisions.size > 0) {
-          const pre = [...prefixCollisions].map(escapeChar).join('');
-          const suf = [...suffixCollisions].map(escapeChar).join('');
-          return `(?<![${pre}])${en}(?![${suf}])`;
+          return `(?<!${charGroup(prefixCollisions)})${en}(?!${charGroup(suffixCollisions)})`;
         } else if (prefixCollisions.size > 0) {
-          const pre = [...prefixCollisions].map(escapeChar).join('');
-          return `(?<![${pre}])${en}`;
+          return `(?<!${charGroup(prefixCollisions)})${en}`;
         } else if (suffixCollisions.size > 0) {
-          const suf = [...suffixCollisions].map(escapeChar).join('');
-          return `${en}(?![${suf}])`;
+          return `${en}(?!${charGroup(suffixCollisions)})`;
         }
         return en;
       };
 
       // 1. Output existing keys first in original order
-      const existingTextKeyOrder = existingLocaleTranslations?.textKeyOrder ?? [];
 
       for (const key of existingTextKeyOrder) {
         const loc = replaceText[key];
@@ -768,10 +840,9 @@ const processFile = (
         if (!hasRegex) {
           outputKey = addCollisionRegex(key);
         } else {
-          // Extract base text from existing regex (strip lookbehind/lookahead)
-          const baseMatch = key.match(/^(?:\(\?<![^)]+\))?(.*?)(?:\(\?!.[^)]*\))?$/);
-          const baseText = baseMatch?.[1];
-          if (baseText !== undefined && baseText !== '' && baseText !== key) {
+          // Use extractBaseText to strip lookbehind/lookahead, then re-check collisions
+          const baseText = extractBaseText(key);
+          if (baseText !== key) {
             outputKey = addCollisionRegex(baseText);
           }
         }
