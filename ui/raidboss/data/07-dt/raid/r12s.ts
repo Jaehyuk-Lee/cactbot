@@ -2,15 +2,17 @@ import Conditions from '../../../../../resources/conditions';
 import { UnreachableCode } from '../../../../../resources/not_reached';
 import Outputs from '../../../../../resources/outputs';
 import { Responses } from '../../../../../resources/responses';
-import {
-  DirectionOutput8,
-  DirectionOutputCardinal,
-  DirectionOutputIntercard,
-  Directions,
-} from '../../../../../resources/util';
+import { DirectionOutputIntercard, Directions } from '../../../../../resources/util';
 import ZoneId from '../../../../../resources/zone_id';
 import { RaidbossData } from '../../../../../types/data';
 import { TriggerSet } from '../../../../../types/trigger';
+
+// TODO: Mortal Coil calls
+// TODO: Separate Split Scourge and Venomous Scourge triggers
+// TODO: Safe spots for Curtain Call's Unbreakable flesh
+// TODO: Safe spots for Slaughtershed Stack/Spreads
+// TODO: Twisted Vision 5 Tower spots
+// TODO: Twisted Vision 5 Lindwurm\'s Stone III (Earth Tower) locations
 
 export type Phase =
   | 'doorboss'
@@ -21,9 +23,6 @@ export type Phase =
   | 'reenactment1'
   | 'idyllic'
   | 'reenactment2';
-
-type DirectionCardinal = Exclude<DirectionOutputCardinal, 'unknown'>;
-type DirectionIntercard = Exclude<DirectionOutputIntercard, 'unknown'>;
 
 export interface Data extends RaidbossData {
   readonly triggerSetConfig: {
@@ -39,8 +38,8 @@ export interface Data extends RaidbossData {
     | 'rearCleave';
   myFleshBonds?: 'alpha' | 'beta';
   inLine: { [name: string]: number };
-  blobTowerDirs: string[];
-  fleshBondsCount: number;
+  blobTowerDirs: DirectionOutputIntercard[];
+  cursedCoilDirNum?: number;
   skinsplitterCount: number;
   cellChainCount: number;
   myMitoticPhase?: string;
@@ -126,14 +125,6 @@ const phaseMap: { [id: string]: Phase } = {
   'B509': 'idyllic',
 };
 
-const isCardinalDir = (dir: DirectionOutput8): dir is DirectionCardinal => {
-  return (Directions.outputCardinalDir as string[]).includes(dir);
-};
-
-const isIntercardDir = (dir: DirectionOutput8): dir is DirectionIntercard => {
-  return (Directions.outputIntercardDir as string[]).includes(dir);
-};
-
 const triggerSet: TriggerSet<Data> = {
   id: 'AacHeavyweightM4Savage',
   zoneId: ZoneId.AacHeavyweightM4Savage,
@@ -182,7 +173,6 @@ const triggerSet: TriggerSet<Data> = {
     inLine: {},
     blobTowerDirs: [],
     skinsplitterCount: 0,
-    fleshBondsCount: 0,
     cellChainCount: 0,
     hasRot: false,
     // Phase 2
@@ -278,18 +268,10 @@ const triggerSet: TriggerSet<Data> = {
       },
     },
     {
-      id: 'R12S Phase Two ActorSetPos Tracker',
+      id: 'R12S ActorSetPos Tracker',
+      // Only in use for replication 1, 2, and idyllic phases
       type: 'ActorSetPos',
       netRegex: { id: '4[0-9A-Fa-f]{7}', capture: true },
-      condition: (data) => {
-        if (
-          data.phase === 'replication1' ||
-          data.phase === 'replication2' ||
-          data.phase === 'idyllic'
-        )
-          return true;
-        return false;
-      },
       run: (data, matches) =>
         data.actorPositions[matches.id] = {
           x: parseFloat(matches.x),
@@ -298,18 +280,10 @@ const triggerSet: TriggerSet<Data> = {
         },
     },
     {
-      id: 'R12S Phase Two ActorMove Tracker',
+      id: 'R12S ActorMove Tracker',
+      // Only in use for replication 1, 2, and idyllic phases
       type: 'ActorMove',
       netRegex: { id: '4[0-9A-Fa-f]{7}', capture: true },
-      condition: (data) => {
-        if (
-          data.phase === 'replication1' ||
-          data.phase === 'replication2' ||
-          data.phase === 'idyllic'
-        )
-          return true;
-        return false;
-      },
       run: (data, matches) =>
         data.actorPositions[matches.id] = {
           x: parseFloat(matches.x),
@@ -318,18 +292,10 @@ const triggerSet: TriggerSet<Data> = {
         },
     },
     {
-      id: 'R12S Phase Two AddedCombatant Tracker',
+      id: 'R12S AddedCombatant Tracker',
+      // Only in use for replication 1, 2, and idyllic phases
       type: 'AddedCombatant',
       netRegex: { id: '4[0-9A-Fa-f]{7}', capture: true },
-      condition: (data) => {
-        if (
-          data.phase === 'replication1' ||
-          data.phase === 'replication2' ||
-          data.phase === 'idyllic'
-        )
-          return true;
-        return false;
-      },
       run: (data, matches) =>
         data.actorPositions[matches.id] = {
           x: parseFloat(matches.x),
@@ -724,7 +690,7 @@ const triggerSet: TriggerSet<Data> = {
     },
     {
       id: 'R12S Phagocyte Spotlight Blob Tower Location Collect',
-      // StartsUsing and StartsUsingExtra can have bad data, there is enough time that Ability is sufficient
+      // StartsUsing can have bad data
       // Pattern 1
       // Blob 1: (104, 104) SE Inner
       // Blob 2: (96, 96) NW Inner
@@ -745,7 +711,7 @@ const triggerSet: TriggerSet<Data> = {
       // Blob 2: (104, 96) NE Inner
       // Blob 3: (115, 110) SE Outer
       // Blob 4: (86, 90) NW Outer
-      type: 'Ability',
+      type: 'StartsUsingExtra',
       netRegex: { id: 'B4B6', capture: true },
       suppressSeconds: 10,
       run: (data, matches) => {
@@ -777,7 +743,7 @@ const triggerSet: TriggerSet<Data> = {
       id: 'R12S Phagocyte Spotlight Blob Tower Location (Early)',
       // 23.8s until B4B7 Rolling Mass Blob Tower Hit
       // Only need to know first blob location
-      type: 'Ability',
+      type: 'StartsUsingExtra',
       netRegex: { id: 'B4B6', capture: false },
       condition: (data) => data.myFleshBonds === 'alpha',
       delaySeconds: 0.1,
@@ -786,13 +752,13 @@ const triggerSet: TriggerSet<Data> = {
         // Timings based on next trigger
         switch (myNum) {
           case 1:
-            return 17;
+            return 20;
           case 2:
-            return 22;
+            return 25;
           case 3:
-            return 18;
+            return 21;
           case 4:
-            return 18;
+            return 21;
         }
       },
       suppressSeconds: 10,
@@ -845,6 +811,30 @@ const triggerSet: TriggerSet<Data> = {
       delaySeconds: 3, // 5s warning
       suppressSeconds: 10,
       response: Responses.drawIn(),
+    },
+    {
+      id: 'R12S Cursed Coil Initial Direction Collect',
+      // B4B8 Cruel Coil: Starts east, turns counterclock
+      // B4B9 Cruel Coil: Starts west, turns counterclock
+      // B4BA Cruel Coil: Starts north, turns counterclock
+      // B4BB Cruel Coil: Starts south, turns counterclock
+      type: 'StartsUsing',
+      netRegex: { id: ['B4B8', 'B4B9', 'B4BA', 'B4BB'], source: 'Lindwurm', capture: true },
+      run: (data, matches) => {
+        switch (matches.id) {
+          case 'B4B8':
+            data.cursedCoilDirNum = 1;
+            return;
+          case 'B4B9':
+            data.cursedCoilDirNum = 3;
+            return;
+          case 'B4BA':
+            data.cursedCoilDirNum = 0;
+            return;
+          case 'B4BB':
+            data.cursedCoilDirNum = 2;
+        }
+      },
     },
     {
       id: 'R12S Skinsplitter Counter',
@@ -1031,12 +1021,20 @@ const triggerSet: TriggerSet<Data> = {
       alertText: (data, matches, output) => {
         const myNum = data.inLine[data.me];
         const flesh = matches.effectId === '1291' ? 'alpha' : 'beta';
+        // As the coil is moving in reverse, the modulo will have negative values
+        // 8 has to be used as that is the next number after 7 (number of spins) that divides evenly by 4
+        const coilDirNum = data.cursedCoilDirNum !== undefined
+          ? ((data.cursedCoilDirNum - data.skinsplitterCount) + 8) % 4
+          : undefined;
+
         if (flesh === 'alpha') {
+          const exit = Directions.outputCardinalDir[coilDirNum ?? 4] ?? 'unknown'; // Return 'unknown' if undefined
           if (myNum === 1) {
             const dir = data.blobTowerDirs[2];
             if (dir !== undefined)
               return output.alpha1Dir!({
                 chains: output.breakChains!(),
+                exit: output[exit]!(),
                 dir: output[dir]!(),
               });
           }
@@ -1045,6 +1043,7 @@ const triggerSet: TriggerSet<Data> = {
             if (dir !== undefined)
               return output.alpha2Dir!({
                 chains: output.breakChains!(),
+                exit: output[exit]!(),
                 dir: output[dir]!(),
               });
           }
@@ -1052,60 +1051,92 @@ const triggerSet: TriggerSet<Data> = {
           // dir undefined or 3rd/4rth in line
           switch (myNum) {
             case 1:
-              return output.alpha1!({ chains: output.breakChains!() });
+              return output.alpha1!({
+                chains: output.breakChains!(),
+                exit: output[exit]!(),
+              });
             case 2:
-              return output.alpha2!({ chains: output.breakChains!() });
+              return output.alpha2!({
+                chains: output.breakChains!(),
+                exit: output[exit]!(),
+              });
             case 3:
-              return output.alpha3!({ chains: output.breakChains!() });
+              return output.alpha3!({
+                chains: output.breakChains!(),
+                exit: output[exit]!(),
+              });
             case 4:
-              return output.alpha4!({ chains: output.breakChains!() });
+              return output.alpha4!({
+                chains: output.breakChains!(),
+                exit: output[exit]!(),
+              });
           }
         }
+
+        const dir = coilDirNum !== undefined
+          ? Directions.outputCardinalDir[(coilDirNum + 2) % 4] ?? 'unknown'
+          : 'unknown';
+
         switch (myNum) {
           case 1:
-            return output.beta1!({ chains: output.breakChains!() });
+            return output.beta1!({
+              chains: output.breakChains!(),
+              dir: output[dir]!(),
+            });
           case 2:
-            return output.beta2!({ chains: output.breakChains!() });
+            return output.beta2!({
+              chains: output.breakChains!(),
+              dir: output[dir]!(),
+            });
           case 3:
-            return output.beta3!({ chains: output.breakChains!() });
+            return output.beta3!({
+              chains: output.breakChains!(),
+              dir: output[dir]!(),
+            });
           case 4:
-            return output.beta4!({ chains: output.breakChains!() });
+            return output.beta4!({
+              chains: output.breakChains!(),
+              dir: output[dir]!(),
+            });
         }
         return output.getTowers!();
       },
       outputStrings: {
-        ...Directions.outputStringsIntercardDir,
+        ...Directions.outputStrings8Dir,
         breakChains: Outputs.breakChains,
         getTowers: Outputs.getTowers,
         alpha1: {
-          en: '${chains} 1 + Blob Tower 3 (Outer)',
+          en: '${chains} 1 (${exit}) + Blob Tower 3 (Outer)',
         },
         alpha1Dir: {
-          en: '${chains} 1 + Blob Tower 3 (Outer ${dir})',
+          en: '${chains} 1 (${exit}) + Blob Tower 3 (Outer ${dir})',
+        },
+        alpha1ExitDir: {
+          en: '${chains} 1 (${exit}) + Blob Tower 3 (Outer ${dir})',
         },
         alpha2: {
-          en: '${chains} 2 + Blob Tower 4 (Outer)',
+          en: '${chains} 2 (${exit}) + Blob Tower 4 (Outer)',
         },
         alpha2Dir: {
-          en: '${chains} 2 + Blob Tower 4 (Outer ${dir})',
+          en: '${chains} 2 (${exit}) + Blob Tower 4 (Outer ${dir})',
         },
         alpha3: {
-          en: '${chains} 3 + Get Out',
+          en: '${chains} 3 (${exit}) + Get Out',
         },
         alpha4: {
-          en: '${chains} 4 + Get Out',
+          en: '${chains} 4 (${exit}) + Get Out',
         },
         beta1: {
-          en: '${chains} 1 => Get Middle',
+          en: '${chains} 1 (${dir}) => Get Middle',
         },
         beta2: {
-          en: '${chains} 2 => Get Middle',
+          en: '${chains} 2 (${dir}) => Get Middle',
         },
         beta3: {
-          en: '${chains} 3 => Wait for last pair',
+          en: '${chains} 3 (${dir}) => Wait for last pair',
         },
         beta4: {
-          en: '${chains} 4 => Get Out',
+          en: '${chains} 4 (${dir}) => Get Out',
         },
       },
     },
@@ -1533,11 +1564,13 @@ const triggerSet: TriggerSet<Data> = {
     },
     {
       id: 'R12S Refreshing Overkill',
-      // 10s castTime that could end with enrage or raidwide
-      type: 'StartsUsing',
-      netRegex: { id: 'B538', source: 'Lindwurm', capture: true },
-      delaySeconds: (_data, matches) => parseFloat(matches.castTime) - 4,
-      durationSeconds: 4.7,
+      // B538 has a 10s castTime that could end with enrage or raidwide
+      // Raidwide cast, B539, happens .2s after but it's not until 5.4s~5.8s later that the damage is applied
+      // Mits applied after "cast" still count towards the damage application
+      type: 'Ability',
+      netRegex: { id: 'B539', source: 'Lindwurm', capture: false },
+      durationSeconds: 5,
+      suppressSeconds: 9999,
       response: Responses.bigAoe('alert'),
     },
     // Phase 2
@@ -1704,7 +1737,8 @@ const triggerSet: TriggerSet<Data> = {
           // Heading is also checked as the non fire clones all face a perfect heading
           const xFilter = pos.x % 1;
           const yFilter = pos.y % 1;
-          if (xFilter === 0 && yFilter === 0 && pos.heading === -0.0001)
+          const hdgFilter = Math.abs(pos.heading - 0.0001) < Number.EPSILON;
+          if (xFilter === 0 && yFilter === 0 && hdgFilter)
             return false;
           return true;
         }
@@ -3161,16 +3195,12 @@ const triggerSet: TriggerSet<Data> = {
           return;
 
         const dirNum = Directions.xyTo8DirNum(actor.x, actor.y, center.x, center.y);
-        const dir = Directions.output8Dir[dirNum] ?? 'unknown';
 
-        if (isCardinalDir(dir))
+        if (dirNum % 2 === 0)
           return output.firstClone!({ cards: output.cardinals!() });
-        if (isIntercardDir(dir))
-          return output.firstClone!({ cards: output.intercards!() });
-        return output.firstClone!({ cards: output.unknown!() });
+        return output.firstClone!({ cards: output.intercards!() });
       },
       outputStrings: {
-        unknown: Outputs.unknown,
         cardinals: Outputs.cardinals,
         intercards: Outputs.intercards,
         firstClone: {
