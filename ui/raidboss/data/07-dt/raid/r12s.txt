@@ -30,7 +30,7 @@ hideall "--sync--"
 83.2 "Phagocyte Spotlight 3" #Ability { id: "B49E", source: "Lindwurm" }
 85.2 "Phagocyte Spotlight 4" #Ability { id: "B49E", source: "Lindwurm" }
 87.3 "--sync--" #Ability { id: "B46E", source: "Lindwurm" }
-87.7 "Ravenous Reach" Ability { id: "B49D", source: "Lindwurm" }
+87.7 "[견제] Ravenous Reach" Ability { id: "B49D", source: "Lindwurm" }
 88.0 "Hemorrhagic Projection x8" #Ability { id: "B4AF", source: "Lindwurm" }
 88.0 "Dramatic Lysis x4" #Ability { id: "B4AA", source: "Lindwurm" }
 88.0 "Fourth-wall Fusion" Ability { id: "B4AE", source: "Lindwurm" }
@@ -63,7 +63,7 @@ hideall "--sync--"
 167.7 "Roiling Mass 4" Ability { id: "B4B7", source: "Blood Vessel" }
 170.7 "Skinsplitter 7" Ability { id: "B4BC", source: "Lindwurm" }
 176.7 "Constrictor" Ability { id: "B4C2", source: "Lindwurm" }
-185.8 "Splattershed (castbar)" Ability { id: "B9C4", source: "Lindwurm" }
+185.8 "[견제] Splattershed (castbar)" Ability { id: "B9C4", source: "Lindwurm" }
 188.2 "Splattershed" Ability { id: "B9C6", source: "Lindwurm" }
 189.9 "--sync--" Ability { id: "B4CB", source: "Lindwurm" }
 
@@ -102,7 +102,7 @@ hideall "--sync--"
 266.6 "Cell Shedding x4" #Ability { id: "B4AC", source: "Lindwurm" }
 266.8 "Dramatic Lysis x4" #Ability { id: "B4AA", source: "Lindwurm" }
 279.4 "Burst" Ability { id: "B49F", source: "Lindwurm" }
-286.1 "Splattershed (castbar)" Ability { id: "B9C3", source: "Lindwurm" }
+286.1 "[견제] Splattershed (castbar)" Ability { id: "B9C3", source: "Lindwurm" }
 288.5 "Splattershed" Ability { id: "B9C6", source: "Lindwurm" }
 290.2 "--sync--" Ability { id: "B4CC", source: "Lindwurm" }
 299.3 "--sync--" Ability { id: "B7C4", source: "Lindwurm" }
@@ -190,7 +190,7 @@ hideall "--sync--"
 884.8 "Serpentine Scourge/--knockback--?" #Ability { id: ["B9BC", "B9C7"], source: "Lindwurm" }
 888.6 "Serpentine Scourge/Raptor Knuckles?" #Ability { id: ["B4D2", "B4D1", "B4CE", "B4CD"], source: "Lindwurm" }
 889.4 "Serpentine Scourge/--knockback--?" #Ability { id: ["B9BC", "B9C7"], source: "Lindwurm" }
-896.3 "Slaughtershed 3 (castbar)" #Ability { id: ["B4C3", "B4C6"], source: "Lindwurm" }
+896.3 "[견제] Slaughtershed 3 (castbar)" #Ability { id: ["B4C3", "B4C6"], source: "Lindwurm" }
 898.7 "Slaughtershed 3" #Ability { id: "ADC9", source: "Lindwurm" }
 
 # Serpentine Scourge Left Second
@@ -239,7 +239,7 @@ hideall "--sync--"
 
 # Slaughtershed 3
 1393.3 label "r12s-p1-slaughtershed3"
-1396.3 "Slaughtershed 3 (castbar)" Ability { id: ["B4C3", "B4C6"], source: "Lindwurm" }
+1396.3 "[견제] Slaughtershed 3 (castbar)" Ability { id: ["B4C3", "B4C6"], source: "Lindwurm" }
 1398.7 "Slaughtershed 3" Ability { id: "ADC9", source: "Lindwurm" }
 
 1400.4 "--sync--" Ability { id: "B4CB", source: "Lindwurm" } jump "r12s-p1-scourge-left-3"
@@ -362,7 +362,7 @@ hideall "--sync--"
 3061.8 "Winged Scourge x4" Ability { id: "B4DC", source: "Lindwurm" }
 3062.1 "Mighty Magic x4" #Ability { id: "B4E0", source: "Lindwurm" }
 3069.4 "Double Sobat (castbar)" Ability { id: "B520", source: "Lindwurm" }
-3070.0 "Double Sobat 1" Ability { id: ["B521", "B522", "B523", "B524"], source: "Lindwurm" }
+3070.0 "[견제] Double Sobat 1" Ability { id: ["B521", "B522", "B523", "B524"], source: "Lindwurm" }
 3074.6 "Double Sobat 2" Ability { id: "B525", source: "Lindwurm" }
 3077.0 "Esoteric Finisher" Ability { id: "B526", source: "Lindwurm" }
 
@@ -427,7 +427,7 @@ hideall "--sync--"
 3231.8 "Dramatic Lysis x8" Ability { id: "B507", source: "Lindwurm" }
 3235.8 "Arcadia Aflame" Ability { id: "B528", source: "Lindwurm" }
 3245.0 "Double Sobat (castbar)" Ability { id: "B520", source: "Lindwurm" }
-3245.6 "Double Sobat 1" Ability { id: ["B521", "B522", "B523", "B524"], source: "Lindwurm" }
+3245.6 "[견제] Double Sobat 1" Ability { id: ["B521", "B522", "B523", "B524"], source: "Lindwurm" }
 3250.2 "Double Sobat 2" Ability { id: "B525", source: "Lindwurm" }
 3252.6 "Esoteric Finisher" Ability { id: "B526", source: "Lindwurm" }
 3260.7 "--middle--" Ability { id: "B4D9", source: "Lindwurm" }
@@ -457,7 +457,7 @@ hideall "--sync--"
 3334.3 "Twisted Vision 3" Ability { id: "BBE2", source: "Lindwurm" }
 3338.7 "Snaking Kick" Ability { id: "BE95", source: "Lindwurm" }
 3338.9 "Power Gusher x4" #Ability { id: "B516", source: "Lindwurm" } # Front/Back are apparently counting as their own casts
-3342.8 "Lindwurm's Meteor" Ability { id: "B4F2", source: "Lindwurm" }
+3342.8 "[견제] Lindwurm's Meteor" Ability { id: "B4F2", source: "Lindwurm" }
 3348.9 "Downfall" Ability { id: "B4F3", source: "Lindwurm" }
 3355.0 "Arcadian Arcanum (castbar)" Ability { id: "B529", source: "Lindwurm" }
 3356.2 "Arcadian Arcanum" Ability { id: "B9D9", source: "Lindwurm" }
@@ -492,7 +492,7 @@ hideall "--sync--"
 # This is because mana burts hits will knockback and heavy slams give Magic Vulns
 # In theory you could do somehow get here and survive with:
 # 3x Mana Burst + 1 Heavy Slam => 3x Heavy Slam + 1 Mana Burst or
-# 3x Heavy Slam + 1 Mana Burst => 3x Mana Burst + 1 Heavy Slam 
+# 3x Heavy Slam + 1 Mana Burst => 3x Mana Burst + 1 Heavy Slam
 # But those would probably require lots of mit and tank immune probably on 2/3 of the heavy slams in the 3 set
 3429.6 "Twisted Vision 6" Ability { id: "BBE2", source: "Lindwurm" }
 3430.6 "Power Gusher" Ability { id: "B50F", source: "Lindschrat" }
@@ -512,7 +512,7 @@ hideall "--sync--"
 3459.8 "Clone Mana Burst x2" Ability { id: "BBE3", source: "Lindwurm" }
 3460.0 "Clone Heavy Slam x2" Ability { id: "BE5D", source: "Lindwurm" }
 3464.8 "Power Gusher" Ability { id: "B516", source: "Lindwurm" }
-3470.7 "Idyllic Dream" Ability { id: "B509", source: "Lindwurm" }
+3470.7 "[견제] Idyllic Dream" Ability { id: "B509", source: "Lindwurm" }
 3478.8 "Double Sobat (castbar)" Ability { id: "B520", source: "Lindwurm" }
 3479.6 "Double Sobat 1" Ability { id: ["B521", "B522", "B523", "B524"], source: "Lindwurm" }
 3484.2 "Double Sobat 2" Ability { id: "B525", source: "Lindwurm" }

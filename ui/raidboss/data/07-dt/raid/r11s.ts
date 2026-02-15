@@ -132,7 +132,21 @@ const triggerSet: TriggerSet<Data> = {
     hadEclipticTether: false,
     heartbreakerCount: 0,
   }),
-  timelineTriggers: [],
+  timelineTriggers: [
+    {
+      id: 'R11S 견제',
+      regex: /\[견제\]/,
+      beforeSeconds: 7,
+      durationSeconds: 7,
+      alertText: (_data, _matches, output) => output.text!(),
+      outputStrings: {
+        text: {
+          en: '견제',
+          ko: '견제',
+        },
+      },
+    },
+  ],
   triggers: [
     {
       id: 'R11S Phase Tracker',

@@ -314,7 +314,7 @@ hideall "--sync--"
 1377.0 "--tethers--"
 1389.0 "Explosion" Ability { id: "B444", source: "The Tyrant" }
 1394.9 "--Fire Breath Markers--" HeadMarker { id: '00F4' }
-1397.0 "--meteor 1--" #StartsUsing { id: "B441", source: "The Tyrant" }
+1397.0 "[견제] --meteor 1--" #StartsUsing { id: "B441", source: "The Tyrant" }
 1399.0 "--meteor 2--" #StartsUsing { id: "B441", source: "The Tyrant" }
 1400.0 "Majestic Meteor 1" #Ability { id: "B441", source: "The Tyrant" }
 1401.1 "--meteor 3--" #StartsUsing { id: "B441", source: "The Tyrant" }
@@ -358,7 +358,7 @@ hideall "--sync--"
 
 # Ecliptic Stampede
 1534.1 "Ecliptic Stampede" Ability { id: "B452", source: "The Tyrant" }
-1541.2 "Mammoth Meteor x2" #Ability { id: "B453", source: "The Tyrant" }
+1541.2 "[견제] Mammoth Meteor x2" #Ability { id: "B453", source: "The Tyrant" }
 1541.2 "Atomic Impact 1" Ability { id: "B454", source: "The Tyrant" }
 1544.2 "Atomic Impact 2" Ability { id: "B454", source: "The Tyrant" }
 1547.2 "Atomic Impact 3" Ability { id: "B454", source: "The Tyrant" }
